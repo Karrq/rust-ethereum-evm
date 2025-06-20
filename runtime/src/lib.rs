@@ -294,6 +294,8 @@ pub struct Config {
 	pub estimate: bool,
 	/// Has EIP-6780. See [EIP-6780](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-6780.md)
 	pub has_eip_6780: bool,
+	/// Enable EIP-7623 calldata cost calculation. See [EIP-7623](https://eips.ethereum.org/EIPS/eip-7623)
+	pub has_eip_7623: bool,
 }
 
 impl Config {
@@ -351,6 +353,7 @@ impl Config {
 			has_mcopy: false,
 			estimate: false,
 			has_eip_6780: false,
+			has_eip_7623: false,
 		}
 	}
 
@@ -408,6 +411,7 @@ impl Config {
 			has_mcopy: false,
 			estimate: false,
 			has_eip_6780: false,
+			has_eip_7623: false,
 		}
 	}
 
@@ -516,6 +520,7 @@ impl Config {
 			has_eip_6780,
 			has_tloadstore,
 			has_mcopy,
+			has_eip_7623: false,
 		}
 	}
 }

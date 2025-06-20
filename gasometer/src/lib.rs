@@ -37,6 +37,8 @@ mod costs;
 mod memory;
 mod utils;
 
+use consts::{STANDARD_TOKEN_COST, TOTAL_COST_FLOOR_PER_TOKEN};
+
 use alloc::vec::Vec;
 use core::cmp::max;
 use evm_core::{ExitError, Opcode, Stack};
@@ -248,25 +250,53 @@ impl<'config> Gasometer<'config> {
 				access_list_address_len,
 				access_list_storage_len,
 			} => {
-				#[deny(clippy::let_and_return)]
-				let cost = self.config.gas_transaction_call
-					+ zero_data_len as u64 * self.config.gas_transaction_zero_data
-					+ non_zero_data_len as u64 * self.config.gas_transaction_non_zero_data
-					+ access_list_address_len as u64 * self.config.gas_access_list_address
-					+ access_list_storage_len as u64 * self.config.gas_access_list_storage_key;
+				if self.config.has_eip_7623 {
+					// EIP-7623: Dual pricing mechanism
+					let tokens_in_calldata = zero_data_len as u64 + (non_zero_data_len as u64 * 4);
+					let access_list_cost = access_list_address_len as u64
+						* self.config.gas_access_list_address
+						+ access_list_storage_len as u64 * self.config.gas_access_list_storage_key;
 
-				log_gas!(
-					self,
-					"Record Call {} [gas_transaction_call: {}, zero_data_len: {}, non_zero_data_len: {}, access_list_address_len: {}, access_list_storage_len: {}]",
-					cost,
-					self.config.gas_transaction_call,
-					zero_data_len,
-					non_zero_data_len,
-					access_list_address_len,
-					access_list_storage_len
-				);
+					let standard_cost = STANDARD_TOKEN_COST * tokens_in_calldata + access_list_cost;
+					let floor_cost = TOTAL_COST_FLOOR_PER_TOKEN * tokens_in_calldata;
 
-				cost
+					let cost = self.config.gas_transaction_call
+						+ core::cmp::max(standard_cost, floor_cost);
+
+					log_gas!(
+						self,
+						"Record Call EIP-7623 {} [gas_transaction_call: {}, tokens_in_calldata: {}, standard_cost: {}, floor_cost: {}, final_cost: {}]",
+						cost,
+						self.config.gas_transaction_call,
+						tokens_in_calldata,
+						standard_cost,
+						floor_cost,
+						cost
+					);
+
+					cost
+				} else {
+					// Original calculation
+					#[deny(clippy::let_and_return)]
+					let cost = self.config.gas_transaction_call
+						+ zero_data_len as u64 * self.config.gas_transaction_zero_data
+						+ non_zero_data_len as u64 * self.config.gas_transaction_non_zero_data
+						+ access_list_address_len as u64 * self.config.gas_access_list_address
+						+ access_list_storage_len as u64 * self.config.gas_access_list_storage_key;
+
+					log_gas!(
+						self,
+						"Record Call {} [gas_transaction_call: {}, zero_data_len: {}, non_zero_data_len: {}, access_list_address_len: {}, access_list_storage_len: {}]",
+						cost,
+						self.config.gas_transaction_call,
+						zero_data_len,
+						non_zero_data_len,
+						access_list_address_len,
+						access_list_storage_len
+					);
+
+					cost
+				}
 			}
 			TransactionCost::Create {
 				zero_data_len,
@@ -275,27 +305,61 @@ impl<'config> Gasometer<'config> {
 				access_list_storage_len,
 				initcode_cost,
 			} => {
-				let mut cost = self.config.gas_transaction_create
-					+ zero_data_len as u64 * self.config.gas_transaction_zero_data
-					+ non_zero_data_len as u64 * self.config.gas_transaction_non_zero_data
-					+ access_list_address_len as u64 * self.config.gas_access_list_address
-					+ access_list_storage_len as u64 * self.config.gas_access_list_storage_key;
-				if self.config.max_initcode_size.is_some() {
-					cost += initcode_cost;
-				}
+				if self.config.has_eip_7623 {
+					// EIP-7623: Dual pricing mechanism
+					let tokens_in_calldata = zero_data_len as u64 + (non_zero_data_len as u64 * 4);
+					let access_list_cost = access_list_address_len as u64
+						* self.config.gas_access_list_address
+						+ access_list_storage_len as u64 * self.config.gas_access_list_storage_key;
 
-				log_gas!(
-					self,
-					"Record Create {} [gas_transaction_create: {}, zero_data_len: {}, non_zero_data_len: {}, access_list_address_len: {}, access_list_storage_len: {}, initcode_cost: {}]",
-					cost,
-					self.config.gas_transaction_create,
-					zero_data_len,
-					non_zero_data_len,
-					access_list_address_len,
-					access_list_storage_len,
-					initcode_cost
-				);
-				cost
+					// For EIP-7623, always include initcode cost for contract creation
+					let standard_cost = STANDARD_TOKEN_COST * tokens_in_calldata
+						+ self.config.gas_transaction_create
+						+ access_list_cost + initcode_cost;
+
+					let floor_cost = TOTAL_COST_FLOOR_PER_TOKEN * tokens_in_calldata;
+
+					let cost = self.config.gas_transaction_call
+						+ core::cmp::max(standard_cost, floor_cost);
+
+					log_gas!(
+						self,
+						"Record Create EIP-7623 {} [gas_transaction_call: {}, gas_transaction_create: {}, tokens_in_calldata: {}, standard_cost: {}, floor_cost: {}, initcode_cost: {}, final_cost: {}]",
+						cost,
+						self.config.gas_transaction_call,
+						self.config.gas_transaction_create,
+						tokens_in_calldata,
+						standard_cost,
+						floor_cost,
+						initcode_cost,
+						cost
+					);
+
+					cost
+				} else {
+					// Original calculation
+					let mut cost = self.config.gas_transaction_create
+						+ zero_data_len as u64 * self.config.gas_transaction_zero_data
+						+ non_zero_data_len as u64 * self.config.gas_transaction_non_zero_data
+						+ access_list_address_len as u64 * self.config.gas_access_list_address
+						+ access_list_storage_len as u64 * self.config.gas_access_list_storage_key;
+					if self.config.max_initcode_size.is_some() {
+						cost += initcode_cost;
+					}
+
+					log_gas!(
+						self,
+						"Record Create {} [gas_transaction_create: {}, zero_data_len: {}, non_zero_data_len: {}, access_list_address_len: {}, access_list_storage_len: {}, initcode_cost: {}]",
+						cost,
+						self.config.gas_transaction_create,
+						zero_data_len,
+						non_zero_data_len,
+						access_list_address_len,
+						access_list_storage_len,
+						initcode_cost
+					);
+					cost
+				}
 			}
 		};
 
@@ -1146,4 +1210,9 @@ impl MemoryCost {
 			other
 		}
 	}
+}
+
+#[cfg(test)]
+mod tests {
+	mod eip_7623;
 }

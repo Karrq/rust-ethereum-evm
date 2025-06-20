@@ -19,3 +19,9 @@ pub const G_SHA3WORD: u64 = 6;
 pub const G_COPY: u64 = 3;
 pub const G_BLOCKHASH: u64 = 20;
 pub const G_CODEDEPOSIT: u64 = 200;
+
+/// Standard cost per token in calldata (EIP-7623)
+pub const STANDARD_TOKEN_COST: u64 = 4;
+
+/// Minimum total cost per token in calldata (EIP-7623)
+pub const TOTAL_COST_FLOOR_PER_TOKEN: u64 = 10;
