@@ -454,6 +454,7 @@ impl Config {
 			has_eip_6780,
 			has_tloadstore,
 			has_mcopy,
+			has_eip_7623,
 		} = inputs;
 
 		// See https://eips.ethereum.org/EIPS/eip-2929
@@ -520,8 +521,27 @@ impl Config {
 			has_eip_6780,
 			has_tloadstore,
 			has_mcopy,
-			has_eip_7623: false,
+			has_eip_7623,
 		}
+	}
+
+	/// Configuration for Pectra hard fork
+	pub fn pectra() -> Config {
+		Self::config_with_derived_values(DerivedConfigInputs {
+			gas_storage_read_warm: 100,
+			gas_sload_cold: 2100,
+			gas_access_list_storage_key: 1900,
+			decrease_clears_refund: true,
+			has_base_fee: true,
+			has_push0: true,
+			disallow_executable_format: true,
+			warm_coinbase_address: true,
+			max_initcode_size: Some(0xc000),
+			has_eip_6780: true,
+			has_tloadstore: true,
+			has_mcopy: true,
+			has_eip_7623: true,
+		})
 	}
 }
 
@@ -540,6 +560,7 @@ struct DerivedConfigInputs {
 	has_eip_6780: bool,
 	has_tloadstore: bool,
 	has_mcopy: bool,
+	has_eip_7623: bool,
 }
 
 impl DerivedConfigInputs {
@@ -557,6 +578,7 @@ impl DerivedConfigInputs {
 			has_eip_6780: false,
 			has_tloadstore: false,
 			has_mcopy: false,
+			has_eip_7623: false,
 		}
 	}
 
@@ -574,6 +596,7 @@ impl DerivedConfigInputs {
 			has_eip_6780: false,
 			has_tloadstore: false,
 			has_mcopy: false,
+			has_eip_7623: false,
 		}
 	}
 
@@ -591,6 +614,7 @@ impl DerivedConfigInputs {
 			has_eip_6780: false,
 			has_tloadstore: false,
 			has_mcopy: false,
+			has_eip_7623: false,
 		}
 	}
 
@@ -609,6 +633,7 @@ impl DerivedConfigInputs {
 			has_eip_6780: false,
 			has_tloadstore: false,
 			has_mcopy: false,
+			has_eip_7623: false,
 		}
 	}
 
@@ -627,6 +652,7 @@ impl DerivedConfigInputs {
 			has_eip_6780: true,
 			has_tloadstore: true,
 			has_mcopy: true,
+			has_eip_7623: false,
 		}
 	}
 }
