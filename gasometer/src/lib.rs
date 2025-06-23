@@ -1213,6 +1213,4 @@ impl MemoryCost {
 }
 
 #[cfg(test)]
-mod tests {
-	mod eip_7623;
-}
+mod tests;

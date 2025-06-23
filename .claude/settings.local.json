@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr view:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(cargo check:*)",
+      "Bash(rg:*)",
+      "Bash(cargo test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": []
+  }
+}
