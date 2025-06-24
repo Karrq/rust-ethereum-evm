@@ -252,16 +252,32 @@ impl<'config> Gasometer<'config> {
 			} => {
 				if self.config.has_eip_7623 {
 					// EIP-7623: Dual pricing mechanism
-					let tokens_in_calldata = zero_data_len as u64 + (non_zero_data_len as u64 * 4);
-					let access_list_cost = access_list_address_len as u64
-						* self.config.gas_access_list_address
-						+ access_list_storage_len as u64 * self.config.gas_access_list_storage_key;
+					let tokens_in_calldata = (non_zero_data_len as u64)
+						.checked_mul(4)
+						.and_then(|v| v.checked_add(zero_data_len as u64))
+						.ok_or(ExitError::OutOfGas)?;
+					
+					let access_list_cost = (access_list_address_len as u64)
+						.checked_mul(self.config.gas_access_list_address)
+						.and_then(|v| {
+							(access_list_storage_len as u64)
+								.checked_mul(self.config.gas_access_list_storage_key)
+								.and_then(|storage_cost| v.checked_add(storage_cost))
+						})
+						.ok_or(ExitError::OutOfGas)?;
 
-					let standard_cost = STANDARD_TOKEN_COST * tokens_in_calldata + access_list_cost;
-					let floor_cost = TOTAL_COST_FLOOR_PER_TOKEN * tokens_in_calldata;
+					let standard_cost = STANDARD_TOKEN_COST
+						.checked_mul(tokens_in_calldata)
+						.and_then(|v| v.checked_add(access_list_cost))
+						.ok_or(ExitError::OutOfGas)?;
+					
+					let floor_cost = TOTAL_COST_FLOOR_PER_TOKEN
+						.checked_mul(tokens_in_calldata)
+						.ok_or(ExitError::OutOfGas)?;
 
 					let cost = self.config.gas_transaction_call
-						+ core::cmp::max(standard_cost, floor_cost);
+						.checked_add(core::cmp::max(standard_cost, floor_cost))
+						.ok_or(ExitError::OutOfGas)?;
 
 					log_gas!(
 						self,
@@ -307,20 +323,35 @@ impl<'config> Gasometer<'config> {
 			} => {
 				if self.config.has_eip_7623 {
 					// EIP-7623: Dual pricing mechanism
-					let tokens_in_calldata = zero_data_len as u64 + (non_zero_data_len as u64 * 4);
-					let access_list_cost = access_list_address_len as u64
-						* self.config.gas_access_list_address
-						+ access_list_storage_len as u64 * self.config.gas_access_list_storage_key;
+					let tokens_in_calldata = (non_zero_data_len as u64)
+						.checked_mul(4)
+						.and_then(|v| v.checked_add(zero_data_len as u64))
+						.ok_or(ExitError::OutOfGas)?;
+					
+					let access_list_cost = (access_list_address_len as u64)
+						.checked_mul(self.config.gas_access_list_address)
+						.and_then(|v| {
+							(access_list_storage_len as u64)
+								.checked_mul(self.config.gas_access_list_storage_key)
+								.and_then(|storage_cost| v.checked_add(storage_cost))
+						})
+						.ok_or(ExitError::OutOfGas)?;
 
 					// For EIP-7623, always include initcode cost for contract creation
-					let standard_cost = STANDARD_TOKEN_COST * tokens_in_calldata
-						+ self.config.gas_transaction_create
-						+ access_list_cost + initcode_cost;
+					let standard_cost = STANDARD_TOKEN_COST
+						.checked_mul(tokens_in_calldata)
+						.and_then(|v| v.checked_add(self.config.gas_transaction_create))
+						.and_then(|v| v.checked_add(access_list_cost))
+						.and_then(|v| v.checked_add(initcode_cost))
+						.ok_or(ExitError::OutOfGas)?;
 
-					let floor_cost = TOTAL_COST_FLOOR_PER_TOKEN * tokens_in_calldata;
+					let floor_cost = TOTAL_COST_FLOOR_PER_TOKEN
+						.checked_mul(tokens_in_calldata)
+						.ok_or(ExitError::OutOfGas)?;
 
 					let cost = self.config.gas_transaction_call
-						+ core::cmp::max(standard_cost, floor_cost);
+						.checked_add(core::cmp::max(standard_cost, floor_cost))
+						.ok_or(ExitError::OutOfGas)?;
 
 					log_gas!(
 						self,
